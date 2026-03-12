@@ -5,7 +5,7 @@ services:
     container_name: keycloak
     environment:
       - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=AdminPass2025!
+      - KEYCLOAK_ADMIN_PASSWORD=changeme!
       - KC_DB=dev-file
     ports:
       - "8080:8080"
