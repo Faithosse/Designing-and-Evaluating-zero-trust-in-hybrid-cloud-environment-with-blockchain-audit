@@ -57,8 +57,8 @@ zt-client
 Test user
 
 ```
-username: paul_faith
-password: AdminPass2025!
+username: chageme
+password: changeme
 ```
 
 ## Procedure
@@ -68,8 +68,8 @@ Execute the following command from a terminal:
 ```
 curl -X POST http://192.168.1.101:8080/realms/zt-realm/protocol/openid-connect/token \
 -d "client_id=zt-client" \
--d "username=paul_faith" \
--d "password=AdminPass2025!" \
+-d "username=changeme" \
+-d "password=changeme" \
 -d "grant_type=password"
 ```
 
