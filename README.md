@@ -145,15 +145,6 @@ Reproducibility Notes
 
 This repository is intended to support technical reproducibility of the prototype. It includes implementation artifacts, configuration structure, scripts, and documentation for each VM role.
 
-Before publishing publicly:
-
-remove passwords, secrets, tokens, and private keys
-
-replace hardcoded usernames and credentials with placeholders
-
-store environment-specific values in .env files that are not committed
-
-sanitize screenshots and logs where necessary
 
 Current Status
 
