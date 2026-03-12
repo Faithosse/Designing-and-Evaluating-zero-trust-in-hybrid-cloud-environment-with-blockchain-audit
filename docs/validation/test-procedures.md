@@ -105,11 +105,8 @@ iat
 
 ## Evidence
 
-Screenshots should be stored in
-
-```
 docs/screenshots/authentication/
-```
+
 
 Example filename
 
