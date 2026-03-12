@@ -1,49 +1,436 @@
-# Test Procedures
+# Zero Trust System Test Procedures
 
 ## Overview
 
-This document defines the functional and security test procedures for the Zero Trust prototype. The environment consists of:
+This document describes the testing procedures used to validate the Zero Trust architecture implemented in this project.
 
-- **VM1 – Control Plane**: Keycloak, OPA, Elasticsearch, Kibana, Filebeat, blockchain audit
-- **VM2 – Application Plane**: NGINX Policy Enforcement Point (PEP)
-- **VM3 – Network Security**: pfSense firewall and micro-segmentation gateway
+The prototype environment consists of three virtual machines.
 
-Test objectives:
+| VM | Role | Components |
+|---|---|---|
+| VM1 | Control Plane | Keycloak, Open Policy Agent (OPA), Elasticsearch, Kibana, Filebeat, Blockchain Audit |
+| VM2 | Application Layer | NGINX Policy Enforcement Point |
+| VM3 | Network Security | pfSense firewall and micro-segmentation |
 
-1. Verify **authentication** through Keycloak
-2. Verify **authorization** through OPA and NGINX
-3. Verify **tamper detection** through the blockchain audit chain
-4. Measure **Mean Time To Detect (MTTD)** using the tampering detection workflow
+The testing procedures verify the following security properties:
 
-These procedures align with the project evaluation methodology and environment. :contentReference[oaicite:2]{index=2}
-
----
-
-## Test Environment
-
-| VM | Role | IP Address | Services |
-|---|---|---:|---|
-| VM1 | Control Plane | 192.168.1.101 | Keycloak (8080), OPA (8181), Elasticsearch (9200), Kibana (5601), Filebeat, Blockchain audit |
-| VM2 | Application Plane | 192.168.1.102 | NGINX PEP (3001) |
-| VM3 | Network Security | 192.168.1.1/24 | pfSense firewall |
-
-The Zero Trust network is segmented by pfSense, with VM1 and VM2 on the internal LAN segment and explicit allow rules only for required services. :contentReference[oaicite:3]{index=3} :contentReference[oaicite:4]{index=4}
+1. Authentication
+2. Authorization
+3. Tamper Detection
+4. Mean Time To Detect (MTTD)
+5. Centralized Logging
 
 ---
 
-## Preconditions
+# 1 Authentication Test
 
-Before running the test cases, confirm the platform is up.
+## Objective
 
-### VM1 startup
+Verify that the Keycloak Identity Provider successfully authenticates users and issues a valid JSON Web Token (JWT).
 
-```bash
-docker start keycloak
-docker start opa
-docker start elasticsearch kibana
-sudo systemctl start filebeat
-curl -X PUT http://localhost:8181/v1/data/jwks \
-  -H "Content-Type: application/json" \
-  -d @/home/faith/zt-prototype/policies/jwks.json
-docker ps
-sudo systemctl status filebeat --no-pager | head -n 3
+Keycloak serves as the Identity Provider within the Zero Trust architecture and signs JWT tokens using RSA-SHA256 after validating user credentials.
+
+## Environment
+
+VM1 – Control Plane
+
+Service: Keycloak
+
+Address
+
+```
+http://192.168.1.101:8080
+```
+
+Realm
+
+```
+zt-realm
+```
+
+Client
+
+```
+zt-client
+```
+
+Test user
+
+```
+username: paul_faith
+password: AdminPass2025!
+```
+
+## Procedure
+
+Execute the following command from a terminal:
+
+```
+curl -X POST http://192.168.1.101:8080/realms/zt-realm/protocol/openid-connect/token \
+-d "client_id=zt-client" \
+-d "username=paul_faith" \
+-d "password=AdminPass2025!" \
+-d "grant_type=password"
+```
+
+## Expected Result
+
+The server returns a JSON response containing a JWT access token.
+
+Example output
+
+```
+{
+ "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+## Validation
+
+The token payload can be inspected with:
+
+```
+echo "$TOKEN" | cut -d "." -f2 | base64 -d | jq
+```
+
+Expected JWT claims include
+
+```
+iss
+sub
+aud
+exp
+iat
+```
+
+## Evidence
+
+Screenshots should be stored in
+
+```
+docs/screenshots/authentication/
+```
+
+Example filename
+
+```
+keycloak-token.png
+```
+
+---
+
+# 2 Authorization Test
+
+## Objective
+
+Verify that Open Policy Agent evaluates authorization policies and that NGINX enforces the authorization decision.
+
+OPA acts as the Policy Decision Point (PDP) while NGINX acts as the Policy Enforcement Point (PEP).
+
+The policy evaluates
+
+- JWT validity
+- token issuer
+- token audience
+- source IP address
+
+---
+
+## Test 2.1 Valid Token Access
+
+### Procedure
+
+Acquire a token using the authentication procedure.
+
+Then test the authorization policy.
+
+```
+curl -X POST http://localhost:8181/v1/data/httpauthz/allow \
+-H "Content-Type: application/json" \
+-d '{"input":{"method":"GET","headers":{"Authorization":"Bearer '$TOKEN'"},"source_ip":"192.168.1.102"}}'
+```
+
+Then test the protected application endpoint.
+
+```
+curl -H "Authorization: Bearer $TOKEN" http://192.168.1.102:3001/
+```
+
+### Expected Result
+
+OPA response
+
+```
+true
+```
+
+NGINX response
+
+```
+HTTP 200 OK
+```
+
+The protected application content should be returned.
+
+---
+
+## Test 2.2 No Token
+
+### Procedure
+
+Attempt to access the application without authentication.
+
+```
+curl http://192.168.1.102:3001/
+```
+
+### Expected Result
+
+```
+403 Forbidden
+```
+
+---
+
+## Test 2.3 Invalid IP Address
+
+### Procedure
+
+Send an authorization request with an unauthorized source IP.
+
+```
+curl -X POST http://localhost:8181/v1/data/httpauthz/allow \
+-H "Content-Type: application/json" \
+-d '{"input":{"method":"GET","headers":{"Authorization":"Bearer '$TOKEN'"},"source_ip":"10.10.10.10"}}'
+```
+
+### Expected Result
+
+OPA response
+
+```
+false
+```
+
+---
+
+## Evidence
+
+Screenshots stored in
+
+```
+docs/screenshots/authorization/
+```
+
+Example files
+
+```
+opa-allow.png
+opa-deny.png
+nginx-403.png
+```
+
+---
+
+# 3 Tamper Detection Test
+
+## Objective
+
+Verify that the blockchain based audit system detects tampering with logged events.
+
+The blockchain audit mechanism stores security events using SHA-256 hash chaining. Any modification of stored records breaks the chain and is immediately detectable.
+
+---
+
+## Procedure
+
+Navigate to the blockchain audit directory.
+
+```
+cd ~/zt-prototype/blockchain-audit
+```
+
+Add new audit blocks.
+
+```
+./audit_chain.py add '{"type":"OPA_DECISION","result":true,"user":"paul_faith"}'
+./audit_chain.py add '{"type":"OPA_DECISION","result":false,"user":"unknown"}'
+```
+
+Verify the blockchain.
+
+```
+./audit_chain.py verify
+```
+
+### Expected Result
+
+```
+Blockchain verified successfully
+```
+
+---
+
+## Tampering Simulation
+
+Modify an existing block in the blockchain file.
+
+```
+nano audit_chain.json
+```
+
+Change a stored value such as
+
+```
+result:true → result:false
+```
+
+Run verification again.
+
+```
+./audit_chain.py verify
+```
+
+### Expected Result
+
+Verification fails and reports a hash mismatch.
+
+---
+
+## Evidence
+
+Screenshots stored in
+
+```
+docs/screenshots/tamper-detection/
+```
+
+Example
+
+```
+audit-chain-clean.png
+audit-chain-tampered.png
+```
+
+---
+
+# 4 Mean Time To Detect (MTTD)
+
+## Objective
+
+Measure how quickly the blockchain audit mechanism detects tampering.
+
+Mean Time To Detect represents the time between tampering with the audit log and the detection of that tampering.
+
+---
+
+## Procedure
+
+Execute the detection test script.
+
+```
+~/mttd_test.sh
+```
+
+### Expected Result
+
+The script reports detection latency.
+
+Example output
+
+```
+Tamper detected in 88.171 ms
+```
+
+This demonstrates sub-second detection of insider attacks.
+
+---
+
+## Evidence
+
+Screenshots stored in
+
+```
+docs/screenshots/mttd/
+```
+
+Example
+
+```
+mttd-result.png
+```
+
+---
+
+# 5 Logging Verification Test
+
+## Objective
+
+Verify that logs are successfully collected and visualized using the ELK stack.
+
+---
+
+## Procedure
+
+Open Kibana in a browser.
+
+```
+http://192.168.1.101:5601
+```
+
+Navigate to
+
+```
+Analytics → Discover
+```
+
+Select index
+
+```
+filebeat-*
+```
+
+---
+
+## Expected Result
+
+Log entries appear showing authorization events from OPA and the application layer.
+
+These logs confirm that Filebeat successfully ships logs to Elasticsearch and Kibana visualizes them in real time.
+
+---
+
+## Evidence
+
+Screenshots stored in
+
+```
+docs/screenshots/logging/
+```
+
+Example
+
+```
+kibana-logs.png
+```
+
+---
+
+# Summary of Expected Results
+
+| Test | Expected Result |
+|-----|----------------|
+| Authentication | Keycloak issues valid JWT token |
+| Authorization (valid token) | OPA returns true and NGINX returns HTTP 200 |
+| Authorization (no token) | NGINX returns 403 |
+| Authorization (invalid IP) | OPA returns false |
+| Tamper Detection | Blockchain verification fails after modification |
+| Chain Restoration | Blockchain verifies successfully again |
+| MTTD Test | Tampering detected in milliseconds |
+| Logging Test | Security events visible in Kibana |
+
+---
+
+# Screenshot Folder Structure
+
+. 
