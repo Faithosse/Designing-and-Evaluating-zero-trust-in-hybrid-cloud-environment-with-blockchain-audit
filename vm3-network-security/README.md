@@ -62,7 +62,7 @@ This enforces the **Zero Trust principle of least privilege networking**.
 The pfSense administration interface can be accessed through:
 
 https://VM3_IP
-
+vm3-network-security/ping_vm1_vm2.png
 
 Default management port:
 443
