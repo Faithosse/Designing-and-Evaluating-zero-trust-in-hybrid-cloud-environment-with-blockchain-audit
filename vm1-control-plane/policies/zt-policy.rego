@@ -4,8 +4,8 @@ import future.keywords.if
 default allow := false
 
 # ---- Config ----
-allowed_cidrs := {"192.168.1.0/24", "192.168.0.0/24"}
-required_issuer := "http://192.168.1.101:8080/realms/zt-realm"
+allowed_cidrs := {"IP_ADDRESS", "IP_ADDRESS"}
+required_issuer := "http://IP_ADDRES:8080/realms/zt-realm"
 allowed_audiences := {"zt-client", "account"}
 
 # ---- Helpers ----
