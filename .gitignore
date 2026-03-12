@@ -1,0 +1,37 @@
+# Secrets and env files
+.env
+.env.*
+!.env.example
+
+# Tokens, keys, certs
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+jwks.json
+token.txt
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docker / local overrides
+docker-compose.override.yml
+
+# Generated audit / test artifacts
+audit_chain.json
+coverage/
+tmp/
