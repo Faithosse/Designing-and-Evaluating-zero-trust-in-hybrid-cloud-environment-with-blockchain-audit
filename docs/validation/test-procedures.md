@@ -106,15 +106,7 @@ iat
 ## Evidence
 
 docs/screenshots/authentication/
-
-
-Example filename
-
-```
-keycloak-token.png
-```
-
----
+files authenticate.png
 
 # 2 Authorization Test
 
@@ -144,13 +136,13 @@ Then test the authorization policy.
 ```
 curl -X POST http://localhost:8181/v1/data/httpauthz/allow \
 -H "Content-Type: application/json" \
--d '{"input":{"method":"GET","headers":{"Authorization":"Bearer '$TOKEN'"},"source_ip":"192.168.1.102"}}'
+-d '{"input":{"method":"GET","headers":{"Authorization":"Bearer '$TOKEN'"},"source_ip":"IP_ADDRESS"}}'
 ```
 
 Then test the protected application endpoint.
 
 ```
-curl -H "Authorization: Bearer $TOKEN" http://192.168.1.102:3001/
+curl -H "Authorization: Bearer $TOKEN" http://IP_ADDRESS:3001/
 ```
 
 ### Expected Result
@@ -299,7 +291,7 @@ Verification fails and reports a hash mismatch.
 Screenshots stored in
 
 ```
-docs/screenshots/tamper-detection/
+docs/screenshots/tamper-detect/
 ```
 
 Example
@@ -372,7 +364,7 @@ Verify that logs are successfully collected and visualized using the ELK stack.
 Open Kibana in a browser.
 
 ```
-http://192.168.1.101:5601
+http://IP_ADDRESS:5601
 ```
 
 Navigate to
