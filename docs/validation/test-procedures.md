@@ -418,8 +418,3 @@ kibana-logs.png
 | MTTD Test | Tampering detected in milliseconds |
 | Logging Test | Security events visible in Kibana |
 
----
-
-# Screenshot Folder Structure
-
-. 
