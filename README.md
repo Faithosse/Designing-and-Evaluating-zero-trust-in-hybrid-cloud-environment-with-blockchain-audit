@@ -1,4 +1,4 @@
-# Desinging and Evaluating Zero Trust in Hybrid Cloud with Blockchain-Backed Audit Trail
+# Designing and Evaluating Zero Trust in Hybrid Cloud with Blockchain-Backed Audit Trail
 
 ## Overview
 
